@@ -5,6 +5,18 @@
 #include <comdef.h>
 #include "combaseapi.h"
 #include "shobjidl_core.h"
+#include <string>
+#include <vector>
+
+struct Monitor {
+    LPWSTR monitorIndex;
+    LPWSTR wallpaper;
+
+    Monitor(LPWSTR monitorIndex , LPWSTR wallpaper) {
+        this->monitorIndex = monitorIndex;
+        this->wallpaper = wallpaper;
+    }
+};
 
 class MyDesktopWallpaper {
     IDesktopWallpaper* pDesk;
@@ -21,39 +33,72 @@ public:
         CoUninitialize();
     }
 
-    void SetWallpaper(LPCWSTR fullPath) {
-        LPWSTR monitorId = nullptr;
-        pDesk->GetMonitorDevicePathAt(0, &monitorId);
+    std::vector<Monitor> getMonitors() {
+        UINT monitorCount = 0;
+        pDesk->GetMonitorDevicePathCount(&monitorCount);
 
-        pDesk->SetWallpaper(LPCWSTR(monitorId), fullPath);
+        std::vector<Monitor> monitors;
+
+        for(UINT index = 0; index < monitorCount; index++) {
+            LPWSTR monitorId = NULL;
+            pDesk->GetMonitorDevicePathAt(index, &monitorId);
+
+            LPWSTR wallpaper = NULL;
+            pDesk->GetWallpaper(monitorId, &wallpaper);
+
+            monitors.push_back(Monitor(monitorId, wallpaper));
+        }
+
+        return monitors;
+    }
+
+    void SetWallpaper(LPCWSTR fullPath, Monitor monitor) {
+
+        pDesk->SetWallpaper(LPCWSTR(monitor.monitorIndex), fullPath);
         pDesk->SetPosition(DWPOS_SPAN);
     }
 
-    LPWSTR GetWallpaper() {
-        LPWSTR monitorId = nullptr;
+    LPWSTR GetWallpaper(Monitor monitor) {
         LPWSTR wallpaper = nullptr;
-        pDesk->GetMonitorDevicePathAt(0, &monitorId);
 
-        pDesk->GetWallpaper(monitorId, &wallpaper);
+        pDesk->GetWallpaper(monitor.monitorIndex, &wallpaper);
+
+        return wallpaper;
     }
 };
 
 int main(int argc, char* argv[])
 {
-    LPCWSTR arg = NULL;
+    LPCWSTR path = NULL;
+    auto wallpaper = MyDesktopWallpaper();
+    auto monitors = wallpaper.getMonitors();
 
     if (argc > 1) {
-        int size_needed = MultiByteToWideChar(CP_UTF8, 0, argv[1], -1, NULL, 0);
-        arg = new WCHAR[size_needed];
-        MultiByteToWideChar(CP_UTF8, 0, argv[1], -1, (LPWSTR)arg, size_needed);
+        if (std::string(argv[1]) == "get") {
+            auto monitor = monitors.at(0);
+            if (argv[2] != nullptr) {
+                int index;
+                sscanf_s((argv[2]), "%d", &index);
+                monitor = monitors.at(index);
+            }
+
+            std::wcout << wallpaper.GetWallpaper(monitor) << std::endl;;
+        } else if (std::string(argv[1]) == "set") {
+            auto monitor = monitors.at(0);
+            if (argv[2] != nullptr) {
+                int size_needed = MultiByteToWideChar(CP_UTF8, 0, argv[2], -1, NULL, 0);
+                path = new WCHAR[size_needed];
+                MultiByteToWideChar(CP_UTF8, 0, argv[2], -1, (LPWSTR)path, size_needed);
+
+                wallpaper.SetWallpaper(path, monitor);
+            } else {
+                std::cout << "Please provide a path to an image" << std::endl;
+            }
+        }
+        
     }
 
-    MyDesktopWallpaper wallpaper = MyDesktopWallpaper();
-
-    wallpaper.SetWallpaper(arg);
-
-    
-    delete[] arg;
+    delete[] path;
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
