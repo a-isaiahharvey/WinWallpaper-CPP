@@ -4,12 +4,12 @@
 
 ```sh
 # Set
-WinWallpaper set unicorn.jpg
+WinWallpaper.exe set unicorn.jpg
 
 # Set with scaling options [center | stretch | tile |  span | fit | fill]
-WinWallpaper set unicorn.jpg --scale=span
+WinWallpaper.exe set unicorn.jpg --scale=span
 
 # Get
-WinWallpaper get
+WinWallpaper.exe get
 > /Users/sindresorhus/unicorn.jpg
 ```
